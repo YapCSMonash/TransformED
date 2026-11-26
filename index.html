@@ -1,0 +1,1291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Midnight Apothecary Exhibit — Men's Health Escape Room</title>
+  <style>
+    :root {
+      --bg-dark: #0b1020;
+      --panel-bg: rgba(15, 23, 42, 0.9);
+      --panel-border: rgba(212, 175, 55, 0.35);
+      --text-main: #f8fafc;
+      --text-muted: #cbd5e1;
+      --gold: #eab308;
+      --gold-soft: rgba(234, 179, 8, 0.16);
+      --ok: #22c55e;
+      --err: #ef4444;
+      --info: #38bdf8;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    button,
+    select,
+    input {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      padding: 0.65rem 1.1rem;
+      font-weight: 600;
+      transition: transform 0.12s ease, opacity 0.15s ease, background-color 0.15s ease;
+    }
+
+    button:focus-visible,
+    select:focus-visible,
+    input:focus-visible {
+      outline: 3px solid var(--gold);
+      outline-offset: 2px;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background-color: var(--gold);
+      color: #0f172a;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      filter: brightness(1.07);
+    }
+
+    .btn-secondary {
+      background-color: rgba(30, 41, 59, 0.95);
+      color: var(--text-main);
+      border-color: rgba(148, 163, 184, 0.35);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background-color: rgba(51, 65, 85, 0.95);
+    }
+
+    /* Top HUD Bar */
+    .hud {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.75rem 1.25rem;
+      background: rgba(9, 13, 26, 0.94);
+      border-bottom: 1px solid var(--panel-border);
+    }
+
+    .hud-group {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .stat-pill {
+      background: rgba(30, 41, 59, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      border-radius: 999px;
+      padding: 0.35rem 0.85rem;
+      font-size: 0.92rem;
+    }
+
+    .progress-wrap {
+      width: 170px;
+      height: 10px;
+      background: rgba(30, 41, 59, 0.95);
+      border-radius: 999px;
+      overflow: hidden;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #eab308, #22c55e);
+      transition: width 0.3s ease;
+    }
+
+    /* Screen Container */
+    .screen {
+      display: none;
+      min-height: calc(100vh - 60px);
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      padding: 2rem 1rem 3rem;
+    }
+
+    .screen.active {
+      display: block;
+    }
+
+    .overlay {
+      max-width: 920px;
+      margin: 0 auto;
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 14px;
+      padding: 1.75rem;
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
+    }
+
+    h1, h2, h3 {
+      margin-top: 0;
+      line-height: 1.25;
+    }
+
+    .badge {
+      display: inline-block;
+      background: var(--gold-soft);
+      color: #fde047;
+      border: 1px solid rgba(234, 179, 8, 0.45);
+      border-radius: 6px;
+      padding: 0.2rem 0.6rem;
+      font-size: 0.8rem;
+      font-weight: 700;
+      margin-bottom: 0.6rem;
+    }
+
+    /* Map Grid */
+    .map-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.15rem;
+      margin-top: 1.25rem;
+    }
+
+    .room-card {
+      background: rgba(30, 41, 59, 0.92);
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      border-radius: 12px;
+      padding: 1.15rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 0.9rem;
+    }
+
+    .status-tag {
+      font-size: 0.82rem;
+      font-weight: 700;
+      padding: 0.2rem 0.55rem;
+      border-radius: 6px;
+      display: inline-block;
+    }
+
+    .status-open { background: rgba(56, 189, 248, 0.18); color: #7dd3fc; }
+    .status-done { background: rgba(34, 197, 94, 0.2); color: #86efac; }
+    .status-locked { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+
+    /* Fragments & Reconstruction */
+    .fragments-panel {
+      margin-top: 1.75rem;
+      padding: 1.25rem;
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(148, 163, 184, 0.28);
+    }
+
+    .fragment-join-box {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      gap: 0;
+      margin: 1rem 0;
+      padding: 1rem;
+      background: rgba(245, 241, 232, 0.08);
+      border-radius: 10px;
+    }
+
+    .fragment-piece {
+      max-width: 290px;
+      width: 48%;
+      height: auto;
+      display: block;
+    }
+
+    .fragment-piece.right-piece {
+      margin-left: -24px;
+    }
+
+    .fragment-placeholder {
+      width: 240px;
+      min-height: 120px;
+      border: 2px dashed rgba(148, 163, 184, 0.45);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 0.8rem;
+      color: var(--text-muted);
+      margin: 0.5rem;
+    }
+
+    /* Questions */
+    .question-box {
+      background: rgba(30, 41, 59, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      border-radius: 12px;
+      padding: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .option-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+      margin: 0.85rem 0;
+    }
+
+    .option-label {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.6rem;
+      padding: 0.65rem 0.8rem;
+      background: rgba(15, 23, 42, 0.72);
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .match-row,
+    .dropdown-row,
+    .seq-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.65rem;
+      padding: 0.65rem 0.8rem;
+      background: rgba(15, 23, 42, 0.72);
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      border-radius: 8px;
+      margin-bottom: 0.55rem;
+    }
+
+    select,
+    input[type="text"] {
+      background: #0f172a;
+      color: var(--text-main);
+      border: 1px solid rgba(148, 163, 184, 0.45);
+      border-radius: 6px;
+      padding: 0.45rem 0.65rem;
+    }
+
+    .hint-box {
+      margin-top: 0.75rem;
+      padding: 0.7rem 0.9rem;
+      border-radius: 8px;
+      background: rgba(56, 189, 248, 0.14);
+      border-left: 4px solid var(--info);
+      color: #e0f2fe;
+      display: none;
+    }
+
+    .feedback-box {
+      margin-top: 0.85rem;
+      padding: 0.8rem 1rem;
+      border-radius: 8px;
+      display: none;
+    }
+
+    .feedback-box.ok {
+      display: block;
+      background: rgba(34, 197, 94, 0.16);
+      border: 1px solid rgba(34, 197, 94, 0.55);
+      color: #dcfce7;
+    }
+
+    .feedback-box.err {
+      display: block;
+      background: rgba(239, 68, 68, 0.16);
+      border: 1px solid rgba(239, 68, 68, 0.55);
+      color: #fee2e2;
+    }
+
+    .action-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    @media (max-width: 600px) {
+      .overlay {
+        padding: 1.15rem;
+      }
+      .fragment-piece {
+        width: 100%;
+      }
+      .fragment-piece.right-piece {
+        margin-left: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Persistent HUD -->
+  <header class="hud" aria-label="Game status bar">
+    <div class="hud-group">
+      <div class="stat-pill" id="hudTimer" aria-live="polite">Time: 20:00</div>
+      <div class="stat-pill" id="hudLife" aria-live="polite">Life Points: 100</div>
+      <div class="stat-pill" id="hudProgress">Progress: 0 / 3 Rooms</div>
+      <div class="progress-wrap" aria-hidden="true">
+        <div class="progress-bar" id="progressBar"></div>
+      </div>
+    </div>
+    <div class="hud-group">
+      <button type="button" class="btn-secondary" id="audioToggleBtn" aria-pressed="false">
+        Audio: Off (Click to Enable)
+      </button>
+      <button type="button" class="btn-secondary" id="hudRestartBtn">Restart</button>
+    </div>
+  </header>
+
+  <!-- Start Screen -->
+  <section id="startScreen" class="screen active" style="background-image: url('assets/cover.png');" aria-labelledby="startTitle">
+    <div class="overlay">
+      <span class="badge">MUSEUM AFTER DARK &bull; YEAR 3 PHARMACY</span>
+      <h1 id="startTitle">The Midnight Apothecary Exhibit</h1>
+      <p>
+        After hours at the National Museum of Medical History, the automated security lockdown triggers,
+        trapping you inside the newly curated Men&rsquo;s Health &amp; Urological Therapeutics wing.
+        Investigate the open galleries, piece together the torn ledger fragments, unlock the Chief
+        Apothecary&rsquo;s Vault, and restore exit access before time or life points run out.
+      </p>
+      <div class="action-row">
+        <button type="button" class="btn-primary" id="startBtn">Start</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Instructions Screen -->
+  <section id="instructionsScreen" class="screen" style="background-image: url('assets/cover.png');" aria-labelledby="instrTitle">
+    <div class="overlay">
+      <span class="badge">MISSION BRIEFING</span>
+      <h2 id="instrTitle">How to Play &amp; Escape</h2>
+      <ul>
+        <li><strong>Educational Mission:</strong> Apply Year 3 pharmacy knowledge on the basic pharmacologic management, safety screening, interactions, and counseling for Benign Prostatic Hyperplasia (BPH) and Erectile Dysfunction (ED).</li>
+        <li><strong>Three-Room Structure:</strong> Room 1 and Room 2 open right away and can be completed in either order. Room 3 is locked until you collect both document fragments and enter the four-digit code.</li>
+        <li><strong>Timer, Life Points &amp; Penalties:</strong> You have a <strong>20-minute countdown timer</strong> and <strong>100 starting life points</strong>. Every incorrect answer deducts <strong>10 life points</strong>. Reaching 0 life points or running out of time triggers Game Over. Optional hints are available in each room.</li>
+        <li><strong>Document Fragments &amp; Vault Code:</strong> Completing Room 1 reveals Fragment 1; completing Room 2 reveals Fragment 2. Once both are collected, they join together to reveal the four-digit code required to unlock Room 3.</li>
+      </ul>
+      <div class="action-row">
+        <button type="button" class="btn-primary" id="continueToMapBtn">Continue</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Navigation Map Screen -->
+  <section id="mapScreen" class="screen" style="background-image: url('assets/cover.png');" aria-labelledby="mapTitle">
+    <div class="overlay">
+      <span class="badge">MUSEUM FLOOR PLAN</span>
+      <h2 id="mapTitle">Navigation Map</h2>
+      <p>Select Room 1 or Room 2 to begin in either order. Complete both rooms to reconstruct the document and unlock Room 3.</p>
+
+      <div class="map-grid">
+        <article class="room-card">
+          <div>
+            <span class="status-tag status-open" id="room1Badge">Available</span>
+            <h3>Room 1: The Hall of Prostate Pathology</h3>
+            <p>Differentiate BPH medication mechanisms, onset of action, and adverse effect profiles.</p>
+          </div>
+          <button type="button" class="btn-primary" id="openRoom1Btn">Enter Room 1</button>
+        </article>
+
+        <article class="room-card">
+          <div>
+            <span class="status-tag status-open" id="room2Badge">Available</span>
+            <h3>Room 2: The Vascular &amp; Vitality Archive</h3>
+            <p>Identify contraindications, drug interactions, and counseling parameters for ED therapy.</p>
+          </div>
+          <button type="button" class="btn-primary" id="openRoom2Btn">Enter Room 2</button>
+        </article>
+
+        <article class="room-card">
+          <div>
+            <span class="status-tag status-locked" id="room3Badge">Locked</span>
+            <h3>Room 3: The Chief Apothecary&rsquo;s Vault</h3>
+            <p>Integrate clinical decision-making for concurrent BPH and ED management.</p>
+          </div>
+          <button type="button" class="btn-secondary" id="openRoom3Btn" disabled>Enter Room 3</button>
+        </article>
+      </div>
+
+      <!-- Document Reconstruction Section -->
+      <div class="fragments-panel" aria-labelledby="reconTitle">
+        <h3 id="reconTitle">Document Reconstruction &amp; Vault Code</h3>
+        <p id="reconStatusText">Collect Fragment 1 (Room 1) and Fragment 2 (Room 2) to reconstruct the torn document.</p>
+
+        <div class="fragment-join-box" id="fragmentDisplayArea">
+          <div class="fragment-placeholder" id="frag1Slot">Fragment 1 Not Yet Collected</div>
+          <div class="fragment-placeholder" id="frag2Slot">Fragment 2 Not Yet Collected</div>
+        </div>
+
+        <p id="accessibleClueText" aria-live="polite" style="display:none;"></p>
+
+        <div id="codeEntrySection" style="display:none; margin-top:0.85rem;">
+          <label for="vaultCodeInput"><strong>Enter Four-Digit Override Code:</strong></label>
+          <div class="action-row" style="margin-top:0.45rem;">
+            <input
+              type="text"
+              id="vaultCodeInput"
+              inputmode="numeric"
+              maxlength="4"
+              pattern="[0-9]{4}"
+              placeholder="4 digits"
+              aria-label="Enter four-digit code to unlock Room 3"
+            />
+            <button type="button" class="btn-primary" id="unlockRoom3Btn">Unlock Room 3</button>
+          </div>
+          <div class="feedback-box" id="codeFeedback" role="status" aria-live="polite"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Room 1 Screen -->
+  <section id="room1Screen" class="screen" style="background-image: url('assets/room1.png');" aria-labelledby="room1Title">
+    <div class="overlay">
+      <span class="badge">ROOM 1</span>
+      <h2 id="room1Title">The Hall of Prostate Pathology</h2>
+      <p>
+        Moonlight filters through the skylights onto antique glass jars and brass urological instruments.
+        A locked display case housing a wax anatomical model hums softly, displaying an interactive clinical
+        tablet left behind by the museum curator.
+      </p>
+      <p><strong>Learning Objective:</strong> Differentiate pharmacologic mechanisms, onset of action, and adverse effect profiles in the management of Benign Prostatic Hyperplasia (BPH).</p>
+
+      <!-- Question 1.1: Matching -->
+      <div class="question-box" id="q1_1_box">
+        <h3>Question 1.1 (Matching)</h3>
+        <p>Match each BPH medication class/agent to its primary mechanism of action or key clinical counseling point.</p>
+
+        <div class="match-row">
+          <span><strong>1. Tamsulosin</strong></span>
+          <select id="q1_1_m1" aria-label="Match for 1. Tamsulosin">
+            <option value="">-- Select match --</option>
+            <option value="A">A. Inhibits type II 5-alpha-reductase, reducing prostate volume over 6&ndash;12 months</option>
+            <option value="B">B. Selective &alpha;1A-adrenergic antagonist with lower risk of orthostatic hypotension, but higher risk of IFIS</option>
+            <option value="C">C. Non-selective &alpha;1-adrenergic antagonist requiring administration immediately after the same meal each day to ensure consistent absorption</option>
+            <option value="D">D. Phosphodiesterase-5 (PDE-5) inhibitor that relaxes smooth muscle in the prostate, bladder neck, and corpus cavernosum</option>
+          </select>
+        </div>
+
+        <div class="match-row">
+          <span><strong>2. Finasteride</strong></span>
+          <select id="q1_1_m2" aria-label="Match for 2. Finasteride">
+            <option value="">-- Select match --</option>
+            <option value="A">A. Inhibits type II 5-alpha-reductase, reducing prostate volume over 6&ndash;12 months</option>
+            <option value="B">B. Selective &alpha;1A-adrenergic antagonist with lower risk of orthostatic hypotension, but higher risk of IFIS</option>
+            <option value="C">C. Non-selective &alpha;1-adrenergic antagonist requiring administration immediately after the same meal each day to ensure consistent absorption</option>
+            <option value="D">D. Phosphodiesterase-5 (PDE-5) inhibitor that relaxes smooth muscle in the prostate, bladder neck, and corpus cavernosum</option>
+          </select>
+        </div>
+
+        <div class="match-row">
+          <span><strong>3. Tadalafil (5 mg daily)</strong></span>
+          <select id="q1_1_m3" aria-label="Match for 3. Tadalafil (5 mg daily)">
+            <option value="">-- Select match --</option>
+            <option value="A">A. Inhibits type II 5-alpha-reductase, reducing prostate volume over 6&ndash;12 months</option>
+            <option value="B">B. Selective &alpha;1A-adrenergic antagonist with lower risk of orthostatic hypotension, but higher risk of IFIS</option>
+            <option value="C">C. Non-selective &alpha;1-adrenergic antagonist requiring administration immediately after the same meal each day to ensure consistent absorption</option>
+            <option value="D">D. Phosphodiesterase-5 (PDE-5) inhibitor that relaxes smooth muscle in the prostate, bladder neck, and corpus cavernosum</option>
+          </select>
+        </div>
+
+        <div class="match-row">
+          <span><strong>4. Alfuzosin</strong></span>
+          <select id="q1_1_m4" aria-label="Match for 4. Alfuzosin">
+            <option value="">-- Select match --</option>
+            <option value="A">A. Inhibits type II 5-alpha-reductase, reducing prostate volume over 6&ndash;12 months</option>
+            <option value="B">B. Selective &alpha;1A-adrenergic antagonist with lower risk of orthostatic hypotension, but higher risk of IFIS</option>
+            <option value="C">C. Non-selective &alpha;1-adrenergic antagonist requiring administration immediately after the same meal each day to ensure consistent absorption</option>
+            <option value="D">D. Phosphodiesterase-5 (PDE-5) inhibitor that relaxes smooth muscle in the prostate, bladder neck, and corpus cavernosum</option>
+          </select>
+        </div>
+
+        <div class="action-row">
+          <button type="button" class="btn-primary" id="submitQ1_1">Check Answer 1.1</button>
+          <button type="button" class="btn-secondary" data-hint="hintQ1_1">Hint</button>
+        </div>
+        <div class="hint-box" id="hintQ1_1">Compare fast-acting smooth muscle relaxers (&alpha;1-blockers and PDE-5 inhibitors) against tissue-shrinking 5&alpha;-reductase inhibitors, and check food effects for alfuzosin.</div>
+        <div class="feedback-box" id="fbQ1_1" role="status" aria-live="polite"></div>
+      </div>
+
+      <!-- Question 1.2: Multiple Selection -->
+      <div class="question-box" id="q1_2_box">
+        <h3>Question 1.2 (Multiple Selection)</h3>
+        <p>
+          A 68-year-old man with moderate-to-severe lower urinary tract symptoms (LUTS) and a prostate volume
+          of 45 mL is initiated on combination therapy with dutasteride and doxazosin. Which of the following
+          counseling points are clinically appropriate? <em>(Select all that apply.)</em>
+        </p>
+        <div class="option-list">
+          <label class="option-label">
+            <input type="checkbox" name="q1_2" value="A" />
+            <span>A. Take the first dose of doxazosin at bedtime to minimize first-dose orthostatic hypotension and syncope.</span>
+          </label>
+          <label class="option-label">
+            <input type="checkbox" name="q1_2" value="B" />
+            <span>B. Expect maximum urinary symptom improvement from dutasteride within 1 to 2 weeks.</span>
+          </label>
+          <label class="option-label">
+            <input type="checkbox" name="q1_2" value="C" />
+            <span>C. Pregnant women or women who may become pregnant must not handle crushed or leaking dutasteride capsules.</span>
+          </label>
+          <label class="option-label">
+            <input type="checkbox" name="q1_2" value="D" />
+            <span>D. Dutasteride typically lowers serum prostate-specific antigen (PSA) levels by approximately 50% after 6 months of therapy.</span>
+          </label>
+          <label class="option-label">
+            <input type="checkbox" name="q1_2" value="E" />
+            <span>E. Discontinue doxazosin immediately once dutasteride has been taken for 4 weeks.</span>
+          </label>
+        </div>
+        <div class="action-row">
+          <button type="button" class="btn-primary" id="submitQ1_2">Check Answer 1.2</button>
+          <button type="button" class="btn-secondary" data-hint="hintQ1_2">Hint</button>
+        </div>
+        <div class="hint-box" id="hintQ1_2">Consider first-dose blood pressure drops with doxazosin, pregnancy precautions for 5&alpha;-reductase inhibitors, and how long dutasteride takes to affect PSA and prostate size.</div>
+        <div class="feedback-box" id="fbQ1_2" role="status" aria-live="polite"></div>
+      </div>
+
+      <!-- Room 1 Reward Banner -->
+      <div class="fragments-panel" id="room1RewardBox" style="display:none;">
+        <h3>Room 1 Completed &mdash; Fragment 1 Collected!</h3>
+        <img src="assets/fragment1.png" alt="First torn document fragment showing ACCESS CODE and 42" style="max-width:260px; width:100%; height:auto; border-radius:8px;" />
+        <div class="action-row">
+          <button type="button" class="btn-primary" data-nav="mapScreen">Back to Map</button>
+        </div>
+      </div>
+
+      <div class="action-row">
+        <button type="button" class="btn-secondary" data-nav="mapScreen">Back to Map</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Room 2 Screen -->
+  <section id="room2Screen" class="screen" style="background-image: url('assets/room2.png');" aria-labelledby="room2Title">
+    <div class="overlay">
+      <span class="badge">ROOM 2</span>
+      <h2 id="room2Title">The Vascular &amp; Vitality Archive</h2>
+      <p>
+        Heavy velvet curtains part to reveal an exhibit dedicated to vascular physiology and historical remedies.
+        A brass pneumatic tube canister rests on a pedestal&mdash;solving the clinical triage cases on the exhibit
+        terminal will depressurize the canister and release the second ledger fragment.
+      </p>
+      <p><strong>Learning Objective:</strong> Identify absolute contraindications, drug-drug interactions, and patient counseling parameters for Erectile Dysfunction (ED) pharmacotherapy.</p>
+
+      <!-- Question 2.1: Dropdown Completion -->
+      <div class="question-box" id="q2_1_box">
+        <h3>Question 2.1 (Dropdown Completion)</h3>
+        <p>Complete the clinical screening protocol for PDE-5 inhibitor therapy by selecting the correct option for each blank.</p>
+
+        <div class="dropdown-row">
+          <span>Before dispensing sildenafil, the pharmacist must verify that the patient is not taking</span>
+          <select id="q2_1_b1" aria-label="Blank 1">
+            <option value="">-- Blank 1 --</option>
+            <option value="organic nitrates (e.g., nitroglycerin)">organic nitrates (e.g., nitroglycerin)</option>
+            <option value="thiazide diuretics">thiazide diuretics</option>
+            <option value="statins">statins</option>
+          </select>
+        </div>
+
+        <div class="dropdown-row">
+          <span>as concurrent use can cause life-threatening</span>
+          <select id="q2_1_b2" aria-label="Blank 2">
+            <option value="">-- Blank 2 --</option>
+            <option value="hypotension">hypotension</option>
+            <option value="hypertensive crisis">hypertensive crisis</option>
+            <option value="hyperkalemia">hyperkalemia</option>
+          </select>
+        </div>
+
+        <div class="dropdown-row">
+          <span>If a patient is stabilized on an alpha-blocker for BPH, PDE-5 inhibitors should be initiated at the</span>
+          <select id="q2_1_b3" aria-label="Blank 3">
+            <option value="">-- Blank 3 --</option>
+            <option value="lowest recommended starting">lowest recommended starting</option>
+            <option value="maximum daily">maximum daily</option>
+            <option value="loading">loading</option>
+          </select>
+        </div>
+
+        <div class="dropdown-row">
+          <span>dose to minimize additive vasodilatory effects. Additionally, patients taking</span>
+          <select id="q2_1_b4" aria-label="Blank 4">
+            <option value="">-- Blank 4 --</option>
+            <option value="sildenafil">sildenafil</option>
+            <option value="tadalafil">tadalafil</option>
+            <option value="sublingual apomorphine">sublingual apomorphine</option>
+          </select>
+        </div>
+        <p style="margin-top:0.35rem; color:var(--text-muted);">should take it at least 60 minutes before sexual activity on an empty stomach, as high-fat meals significantly delay its absorption.</p>
+
+        <div class="action-row">
+          <button type="button" class="btn-primary" id="submitQ2_1">Check Answer 2.1</button>
+          <button type="button" class="btn-secondary" data-hint="hintQ2_1">Hint</button>
+        </div>
+        <div class="hint-box" id="hintQ2_1">Nitric oxide donors plus PDE-5 inhibitors cause severe blood pressure drops; start conservatively with alpha-blockers, and note which drug has food-affected absorption.</div>
+        <div class="feedback-box" id="fbQ2_1" role="status" aria-live="polite"></div>
+      </div>
+
+      <!-- Question 2.2: Multiple Choice -->
+      <div class="question-box" id="q2_2_box">
+        <h3>Question 2.2 (Multiple Choice - Single Answer)</h3>
+        <p>
+          A 59-year-old man with type 2 diabetes, hypertension, and ED asks about taking sildenafil 50 mg.
+          His current medications include metformin, lisinopril, atorvastatin, and isosorbide mononitrate.
+          Which recommendation should the pharmacist provide?
+        </p>
+        <div class="option-list">
+          <label class="option-label">
+            <input type="radio" name="q2_2" value="A" />
+            <span>A. Dispense sildenafil 50 mg and advise separating it from isosorbide mononitrate by at least 12 hours.</span>
+          </label>
+          <label class="option-label">
+            <input type="radio" name="q2_2" value="B" />
+            <span>B. Recommend against sildenafil because co-administration with any nitrate is an absolute contraindication; refer to his prescriber to discuss alternative ED therapies (e.g., vacuum erection device or intracavernosal alprostadil).</span>
+          </label>
+          <label class="option-label">
+            <input type="radio" name="q2_2" value="C" />
+            <span>C. Recommend tadalafil instead, as its longer half-life avoids the interaction with isosorbide mononitrate.</span>
+          </label>
+          <label class="option-label">
+            <input type="radio" name="q2_2" value="D" />
+            <span>D. Advise reducing sildenafil to 25 mg and monitoring blood pressure at home after dosing.</span>
+          </label>
+        </div>
+        <div class="action-row">
+          <button type="button" class="btn-primary" id="submitQ2_2">Check Answer 2.2</button>
+          <button type="button" class="btn-secondary" data-hint="hintQ2_2">Hint</button>
+        </div>
+        <div class="hint-box" id="hintQ2_2">Check his medication list for an organic nitrate and whether spacing doses or switching PDE-5 inhibitors resolves that interaction.</div>
+        <div class="feedback-box" id="fbQ2_2" role="status" aria-live="polite"></div>
+      </div>
+
+      <!-- Room 2 Reward Banner -->
+      <div class="fragments-panel" id="room2RewardBox" style="display:none;">
+        <h3>Room 2 Completed &mdash; Fragment 2 Collected!</h3>
+        <img src="assets/fragment2.png" alt="Second torn document fragment showing ACCESS CODE and 17" style="max-width:260px; width:100%; height:auto; border-radius:8px;" />
+        <div class="action-row">
+          <button type="button" class="btn-primary" data-nav="mapScreen">Back to Map</button>
+        </div>
+      </div>
+
+      <div class="action-row">
+        <button type="button" class="btn-secondary" data-nav="mapScreen">Back to Map</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Room 3 Screen -->
+  <section id="room3Screen" class="screen" style="background-image: url('assets/room3.png');" aria-labelledby="room3Title">
+    <div class="overlay">
+      <span class="badge">ROOM 3 &bull; FINAL CHALLENGE</span>
+      <h2 id="room3Title">The Chief Apothecary&rsquo;s Vault</h2>
+      <p>
+        The heavy steel vault door clicks open, revealing the museum&rsquo;s main security console bathed in
+        amber emergency light. A complex patient case file sits open beside the exit override switch&mdash;resolving
+        this integrated clinical scenario is the final step to unlock the museum doors.
+      </p>
+      <p><strong>Learning Objective:</strong> Integrate clinical decision-making to manage a patient presenting concurrently with BPH and ED, including therapy selection, titration, and safety monitoring.</p>
+
+      <!-- Question 3.1: Sequencing -->
+      <div class="question-box" id="q3_1_box">
+        <h3>Question 3.1 (Sequencing)</h3>
+        <p>
+          A 64-year-old man presents with bothersome BPH symptoms (IPSS score: 18, prostate volume: 28 mL)
+          and concurrent ED. Arrange the pharmacist&rsquo;s clinical management steps in the most logical
+          chronological order from initial assessment to follow-up.
+        </p>
+
+        <div class="seq-row">
+          <span><strong>Step 1:</strong></span>
+          <select id="q3_1_s1" aria-label="First chronological step">
+            <option value="">-- Select Step 1 --</option>
+            <option value="1">Screen medication profile for nitrates, riociguat, and existing alpha-blockers, and assess cardiovascular fitness for sexual activity.</option>
+            <option value="2">Recommend initiating tadalafil 5 mg once daily as monotherapy to address both BPH and ED symptoms simultaneously.</option>
+            <option value="3">Counsel the patient to seek immediate medical attention if he experiences sudden vision loss, sudden hearing decrease, or an erection lasting longer than 4 hours (priapism).</option>
+            <option value="4">Schedule a follow-up evaluation at 4 weeks to assess urinary symptom relief (IPSS) and erectile function response.</option>
+          </select>
+        </div>
+
+        <div class="seq-row">
+          <span><strong>Step 2:</strong></span>
+          <select id="q3_1_s2" aria-label="Second chronological step">
+            <option value="">-- Select Step 2 --</option>
+            <option value="1">Screen medication profile for nitrates, riociguat, and existing alpha-blockers, and assess cardiovascular fitness for sexual activity.</option>
+            <option value="2">Recommend initiating tadalafil 5 mg once daily as monotherapy to address both BPH and ED symptoms simultaneously.</option>
+            <option value="3">Counsel the patient to seek immediate medical attention if he experiences sudden vision loss, sudden hearing decrease, or an erection lasting longer than 4 hours (priapism).</option>
+            <option value="4">Schedule a follow-up evaluation at 4 weeks to assess urinary symptom relief (IPSS) and erectile function response.</option>
+          </select>
+        </div>
+
+        <div class="seq-row">
+          <span><strong>Step 3:</strong></span>
+          <select id="q3_1_s3" aria-label="Third chronological step">
+            <option value="">-- Select Step 3 --</option>
+            <option value="1">Screen medication profile for nitrates, riociguat, and existing alpha-blockers, and assess cardiovascular fitness for sexual activity.</option>
+            <option value="2">Recommend initiating tadalafil 5 mg once daily as monotherapy to address both BPH and ED symptoms simultaneously.</option>
+            <option value="3">Counsel the patient to seek immediate medical attention if he experiences sudden vision loss, sudden hearing decrease, or an erection lasting longer than 4 hours (priapism).</option>
+            <option value="4">Schedule a follow-up evaluation at 4 weeks to assess urinary symptom relief (IPSS) and erectile function response.</option>
+          </select>
+        </div>
+
+        <div class="seq-row">
+          <span><strong>Step 4:</strong></span>
+          <select id="q3_1_s4" aria-label="Fourth chronological step">
+            <option value="">-- Select Step 4 --</option>
+            <option value="1">Screen medication profile for nitrates, riociguat, and existing alpha-blockers, and assess cardiovascular fitness for sexual activity.</option>
+            <option value="2">Recommend initiating tadalafil 5 mg once daily as monotherapy to address both BPH and ED symptoms simultaneously.</option>
+            <option value="3">Counsel the patient to seek immediate medical attention if he experiences sudden vision loss, sudden hearing decrease, or an erection lasting longer than 4 hours (priapism).</option>
+            <option value="4">Schedule a follow-up evaluation at 4 weeks to assess urinary symptom relief (IPSS) and erectile function response.</option>
+          </select>
+        </div>
+
+        <div class="action-row">
+          <button type="button" class="btn-primary" id="submitQ3_1">Check Answer 3.1</button>
+          <button type="button" class="btn-secondary" data-hint="hintQ3_1">Hint</button>
+        </div>
+        <div class="hint-box" id="hintQ3_1">Start with safety screening before choosing therapy, then provide red-flag counseling at dispensing, and plan follow-up after starting treatment.</div>
+        <div class="feedback-box" id="fbQ3_1" role="status" aria-live="polite"></div>
+      </div>
+
+      <!-- Question 3.2: Short Text Answer -->
+      <div class="question-box" id="q3_2_box">
+        <h3>Question 3.2 (Short Text Answer)</h3>
+        <p>
+          During follow-up, the patient from Question 3.1 asks how many hours he would need to wait before
+          receiving emergency nitroglycerin if he had taken <strong>tadalafil</strong> instead of sildenafil.
+          Enter the numeric value only (in hours).
+        </p>
+        <div class="action-row">
+          <input type="text" id="q3_2_input" placeholder="e.g. 48" aria-label="Enter number of hours" />
+          <button type="button" class="btn-primary" id="submitQ3_2">Check Answer 3.2</button>
+          <button type="button" class="btn-secondary" data-hint="hintQ3_2">Hint</button>
+        </div>
+        <div class="hint-box" id="hintQ3_2">Tadalafil has a longer half-life (~17.5 hours) than sildenafil (~4 hours), requiring a 48-hour washout window before nitrates.</div>
+        <div class="feedback-box" id="fbQ3_2" role="status" aria-live="polite"></div>
+      </div>
+
+      <div class="action-row">
+        <button type="button" class="btn-secondary" data-nav="mapScreen">Back to Map</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Completion Screen -->
+  <section id="completionScreen" class="screen" style="background-image: url('assets/room3.png');" aria-labelledby="compTitle">
+    <div class="overlay">
+      <span class="badge">ESCAPED!</span>
+      <h2 id="compTitle">Congratulations &mdash; You Escaped The Midnight Apothecary Exhibit!</h2>
+      <p id="completionSummary"></p>
+      <div class="action-row">
+        <button type="button" class="btn-primary" id="completionRestartBtn">Restart</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Game Over Screen -->
+  <section id="gameOverScreen" class="screen" style="background-image: url('assets/cover.png');" aria-labelledby="overTitle">
+    <div class="overlay">
+      <span class="badge">GAME OVER</span>
+      <h2 id="overTitle">Lockdown Complete &mdash; Try Again</h2>
+      <p id="gameOverReason"></p>
+      <div class="action-row">
+        <button type="button" class="btn-primary" id="gameOverRestartBtn">Restart</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Audio Elements -->
+  <audio id="bgMusic" src="assets/background_music.mp3" loop preload="auto"></audio>
+  <audio id="sfxCorrect" src="assets/correct.mp3" preload="auto"></audio>
+  <audio id="sfxIncorrect" src="assets/incorrect.mp3" preload="auto"></audio>
+  <audio id="sfxDocFound" src="assets/document_found.mp3" preload="auto"></audio>
+  <audio id="sfxDoorUnlock" src="assets/door_unlock.mp3" preload="auto"></audio>
+
+  <script>
+    // Vault code formed by joining fragment1.png ("42") and fragment2.png ("17")
+    const VAULT_CODE = "4217";
+    const INITIAL_SECONDS = 20 * 60;
+    const INITIAL_LIFE = 100;
+
+    let state = {
+      screen: "startScreen",
+      secondsLeft: INITIAL_SECONDS,
+      life: INITIAL_LIFE,
+      room1Done: false,
+      room2Done: false,
+      room3Unlocked: false,
+      room3Done: false,
+      q1_1Done: false,
+      q1_2Done: false,
+      q2_1Done: false,
+      q2_2Done: false,
+      q3_1Done: false,
+      q3_2Done: false,
+      audioEnabled: false,
+      timerId: null,
+      ended: false
+    };
+
+    function safePlay(audioEl) {
+      if (!state.audioEnabled || !audioEl) return;
+      try {
+        audioEl.currentTime = 0;
+        const p = audioEl.play();
+        if (p && typeof p.catch === "function") p.catch(() => {});
+      } catch (_) {}
+    }
+
+    function toggleAudio() {
+      const bgMusic = document.getElementById("bgMusic");
+      const btn = document.getElementById("audioToggleBtn");
+      state.audioEnabled = !state.audioEnabled;
+      btn.setAttribute("aria-pressed", String(state.audioEnabled));
+
+      if (state.audioEnabled) {
+        btn.textContent = "Audio: On (Mute)";
+        try {
+          const p = bgMusic.play();
+          if (p && typeof p.catch === "function") p.catch(() => {});
+        } catch (_) {}
+      } else {
+        btn.textContent = "Audio: Off (Unmute)";
+        try {
+          bgMusic.pause();
+        } catch (_) {}
+      }
+    }
+
+    function showScreen(screenId) {
+      if (state.ended && screenId !== "gameOverScreen" && screenId !== "completionScreen") return;
+      document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
+      const target = document.getElementById(screenId);
+      if (target) {
+        target.classList.add("active");
+        state.screen = screenId;
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+      updateMapAndReconstruction();
+    }
+
+    function formatTime(sec) {
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+    }
+
+    function updateHUD() {
+      document.getElementById("hudTimer").textContent = `Time: ${formatTime(state.secondsLeft)}`;
+      document.getElementById("hudLife").textContent = `Life Points: ${state.life}`;
+
+      const completedRooms =
+        (state.room1Done ? 1 : 0) +
+        (state.room2Done ? 1 : 0) +
+        (state.room3Done ? 1 : 0);
+
+      document.getElementById("hudProgress").textContent = `Progress: ${completedRooms} / 3 Rooms`;
+      document.getElementById("progressBar").style.width = `${(completedRooms / 3) * 100}%`;
+    }
+
+    function deductLife(amount) {
+      state.life = Math.max(0, state.life - amount);
+      updateHUD();
+      if (state.life <= 0) {
+        triggerGameOver("Your life points reached 0.");
+      }
+    }
+
+    function triggerGameOver(reason) {
+      if (state.ended) return;
+      state.ended = true;
+      clearInterval(state.timerId);
+      document.getElementById("gameOverReason").textContent =
+        `${reason} Remaining time: ${formatTime(state.secondsLeft)}, Life points: ${state.life}.`;
+      showScreen("gameOverScreen");
+    }
+
+    function triggerCompletion() {
+      if (state.ended) return;
+      state.ended = true;
+      clearInterval(state.timerId);
+      document.getElementById("completionSummary").textContent =
+        `All 3 rooms completed! Final Life Points: ${state.life} / 100 | Time Remaining: ${formatTime(state.secondsLeft)}.`;
+      showScreen("completionScreen");
+    }
+
+    function updateMapAndReconstruction() {
+      const r1Badge = document.getElementById("room1Badge");
+      const r2Badge = document.getElementById("room2Badge");
+      const r3Badge = document.getElementById("room3Badge");
+      const r3Btn = document.getElementById("openRoom3Btn");
+
+      r1Badge.textContent = state.room1Done ? "Completed" : "Available";
+      r1Badge.className = `status-tag ${state.room1Done ? "status-done" : "status-open"}`;
+
+      r2Badge.textContent = state.room2Done ? "Completed" : "Available";
+      r2Badge.className = `status-tag ${state.room2Done ? "status-done" : "status-open"}`;
+
+      if (state.room3Done) {
+        r3Badge.textContent = "Completed";
+        r3Badge.className = "status-tag status-done";
+        r3Btn.disabled = false;
+        r3Btn.className = "btn-primary";
+      } else if (state.room3Unlocked) {
+        r3Badge.textContent = "Unlocked";
+        r3Badge.className = "status-tag status-open";
+        r3Btn.disabled = false;
+        r3Btn.className = "btn-primary";
+      } else {
+        r3Badge.textContent = "Locked";
+        r3Badge.className = "status-tag status-locked";
+        r3Btn.disabled = true;
+        r3Btn.className = "btn-secondary";
+      }
+
+      const fragArea = document.getElementById("fragmentDisplayArea");
+      const clueEl = document.getElementById("accessibleClueText");
+      const codeSection = document.getElementById("codeEntrySection");
+      const reconStatus = document.getElementById("reconStatusText");
+
+      if (state.room1Done && state.room2Done) {
+        reconStatus.textContent = "Both fragments collected! The torn document is reconstructed below:";
+        fragArea.innerHTML = `
+          <img src="assets/fragment1.png" alt="Fragment 1 showing ACCESS CODE and 42" class="fragment-piece" />
+          <img src="assets/fragment2.png" alt="Fragment 2 showing ACCESS CODE and 17" class="fragment-piece right-piece" />
+        `;
+        clueEl.style.display = "block";
+        clueEl.textContent = `Reconstructed Document Clue: Joining Fragment 1 (42) and Fragment 2 (17) reveals the four-digit override code ${VAULT_CODE}.`;
+        codeSection.style.display = "block";
+      } else {
+        clueEl.style.display = "none";
+        codeSection.style.display = "none";
+        const f1Html = state.room1Done
+          ? `<img src="assets/fragment1.png" alt="Fragment 1 collected" class="fragment-piece" />`
+          : `<div class="fragment-placeholder">Fragment 1 Not Yet Collected (Complete Room 1)</div>`;
+        const f2Html = state.room2Done
+          ? `<img src="assets/fragment2.png" alt="Fragment 2 collected" class="fragment-piece" />`
+          : `<div class="fragment-placeholder">Fragment 2 Not Yet Collected (Complete Room 2)</div>`;
+        fragArea.innerHTML = f1Html + f2Html;
+        reconStatus.textContent = "Collect both Fragment 1 and Fragment 2 to reconstruct the complete code.";
+      }
+    }
+
+    function checkRoom1Completion() {
+      if (state.q1_1Done && state.q1_2Done && !state.room1Done) {
+        state.room1Done = true;
+        document.getElementById("room1RewardBox").style.display = "block";
+        safePlay(document.getElementById("sfxDocFound"));
+        updateHUD();
+        updateMapAndReconstruction();
+      }
+    }
+
+    function checkRoom2Completion() {
+      if (state.q2_1Done && state.q2_2Done && !state.room2Done) {
+        state.room2Done = true;
+        document.getElementById("room2RewardBox").style.display = "block";
+        safePlay(document.getElementById("sfxDocFound"));
+        updateHUD();
+        updateMapAndReconstruction();
+      }
+    }
+
+    function checkRoom3Completion() {
+      if (state.q3_1Done && state.q3_2Done && !state.room3Done) {
+        state.room3Done = true;
+        updateHUD();
+        setTimeout(triggerCompletion, 700);
+      }
+    }
+
+    function showFeedback(elId, isCorrect, message) {
+      const box = document.getElementById(elId);
+      box.className = `feedback-box ${isCorrect ? "ok" : "err"}`;
+      box.textContent = message;
+    }
+
+    // Question 1.1 Handler
+    document.getElementById("submitQ1_1").addEventListener("click", () => {
+      const m1 = document.getElementById("q1_1_m1").value;
+      const m2 = document.getElementById("q1_1_m2").value;
+      const m3 = document.getElementById("q1_1_m3").value;
+      const m4 = document.getElementById("q1_1_m4").value;
+
+      if (!m1 || !m2 || !m3 || !m4) {
+        showFeedback("fbQ1_1", false, "Please select a match for all four items before checking.");
+        return;
+      }
+
+      const ok = m1 === "B" && m2 === "A" && m3 === "D" && m4 === "C";
+      const fbText =
+        "α1-blockers provide rapid symptom relief within days to weeks by relaxing prostatic smooth muscle, whereas 5-alpha-reductase inhibitors shrink prostate tissue over months and are best reserved for men with enlarged prostates (typically >30–40 mL or elevated PSA).";
+
+      if (ok) {
+        state.q1_1Done = true;
+        safePlay(document.getElementById("sfxCorrect"));
+        showFeedback("fbQ1_1", true, `Correct! ${fbText}`);
+        checkRoom1Completion();
+      } else {
+        safePlay(document.getElementById("sfxIncorrect"));
+        showFeedback("fbQ1_1", false, `Not quite (-10 life points). ${fbText}`);
+        deductLife(10);
+      }
+    });
+
+    // Question 1.2 Handler
+    document.getElementById("submitQ1_2").addEventListener("click", () => {
+      const checked = Array.from(document.querySelectorAll('input[name="q1_2"]:checked')).map((el) => el.value).sort();
+      const expected = ["A", "C", "D"];
+      const ok = checked.length === expected.length && checked.every((v, i) => v === expected[i]);
+      const fbText =
+        "Doxazosin requires titration and bedtime administration initially due to non-selective α1 blockade. Dutasteride is teratogenic (risk to male fetus external genitalia) and reduces PSA by ~50% after 6 months (requiring PSA values to be doubled when screening for prostate cancer). Combination therapy typically continues for 6–12 months before considering α-blocker withdrawal.";
+
+      if (ok) {
+        state.q1_2Done = true;
+        safePlay(document.getElementById("sfxCorrect"));
+        showFeedback("fbQ1_2", true, `Correct! ${fbText}`);
+        checkRoom1Completion();
+      } else {
+        safePlay(document.getElementById("sfxIncorrect"));
+        showFeedback("fbQ1_2", false, `Not quite (-10 life points). ${fbText}`);
+        deductLife(10);
+      }
+    });
+
+    // Question 2.1 Handler
+    document.getElementById("submitQ2_1").addEventListener("click", () => {
+      const b1 = document.getElementById("q2_1_b1").value;
+      const b2 = document.getElementById("q2_1_b2").value;
+      const b3 = document.getElementById("q2_1_b3").value;
+      const b4 = document.getElementById("q2_1_b4").value;
+
+      if (!b1 || !b2 || !b3 || !b4) {
+        showFeedback("fbQ2_1", false, "Please complete all four dropdown blanks before checking.");
+        return;
+      }
+
+      const ok =
+        b1 === "organic nitrates (e.g., nitroglycerin)" &&
+        b2 === "hypotension" &&
+        b3 === "lowest recommended starting" &&
+        b4 === "sildenafil";
+
+      const fbText =
+        "PDE-5 inhibitors potentiate the nitric oxide–cGMP pathway; combining them with nitric oxide donors (nitrates or riociguat) causes profound, potentially fatal vasodilation. High-fat meals reduce Cmax and delay Tmax for sildenafil and vardenafil, whereas tadalafil absorption is unaffected by food.";
+
+      if (ok) {
+        state.q2_1Done = true;
+        safePlay(document.getElementById("sfxCorrect"));
+        showFeedback("fbQ2_1", true, `Correct! ${fbText}`);
+        checkRoom2Completion();
+      } else {
+        safePlay(document.getElementById("sfxIncorrect"));
+        showFeedback("fbQ2_1", false, `Not quite (-10 life points). ${fbText}`);
+        deductLife(10);
+      }
+    });
+
+    // Question 2.2 Handler
+    document.getElementById("submitQ2_2").addEventListener("click", () => {
+      const chosen = document.querySelector('input[name="q2_2"]:checked');
+      if (!chosen) {
+        showFeedback("fbQ2_2", false, "Please select an option before checking.");
+        return;
+      }
+
+      const ok = chosen.value === "B";
+      const fbText =
+        "All PDE-5 inhibitors (sildenafil, tadalafil, vardenafil, avanafil) are strictly contraindicated in patients taking regular or intermittent organic nitrates due to synergistic cGMP accumulation and severe hypotension. Non-PDE-5 alternatives (such as vacuum erection devices or local alprostadil) must be considered.";
+
+      if (ok) {
+        state.q2_2Done = true;
+        safePlay(document.getElementById("sfxCorrect"));
+        showFeedback("fbQ2_2", true, `Correct! ${fbText}`);
+        checkRoom2Completion();
+      } else {
+        safePlay(document.getElementById("sfxIncorrect"));
+        showFeedback("fbQ2_2", false, `Not quite (-10 life points). ${fbText}`);
+        deductLife(10);
+      }
+    });
+
+    // Unlock Room 3 Handler
+    document.getElementById("unlockRoom3Btn").addEventListener("click", () => {
+      const entered = document.getElementById("vaultCodeInput").value.trim();
+      if (entered === VAULT_CODE) {
+        state.room3Unlocked = true;
+        safePlay(document.getElementById("sfxDoorUnlock"));
+        showFeedback("codeFeedback", true, "Code accepted! The Chief Apothecary's Vault is now unlocked.");
+        updateMapAndReconstruction();
+      } else {
+        safePlay(document.getElementById("sfxIncorrect"));
+        showFeedback("codeFeedback", false, "Incorrect code (-10 life points). Check the joined document fragments.");
+        deductLife(10);
+      }
+    });
+
+    // Question 3.1 Handler
+    document.getElementById("submitQ3_1").addEventListener("click", () => {
+      const s1 = document.getElementById("q3_1_s1").value;
+      const s2 = document.getElementById("q3_1_s2").value;
+      const s3 = document.getElementById("q3_1_s3").value;
+      const s4 = document.getElementById("q3_1_s4").value;
+
+      if (!s1 || !s2 || !s3 || !s4) {
+        showFeedback("fbQ3_1", false, "Please choose a step for all four positions.");
+        return;
+      }
+
+      const ok = s1 === "1" && s2 === "2" && s3 === "3" && s4 === "4";
+      const fbText =
+        "Safety screening (cardiovascular status and nitrate contraindications) always precedes drug selection. Because his prostate is not significantly enlarged (<30 mL), tadalafil 5 mg daily treats both conditions without needing a 5-alpha-reductase inhibitor. Red-flag safety counseling (priapism, NAION, sudden hearing loss) occurs at dispensing, followed by efficacy reassessment at ~4 weeks.";
+
+      if (ok) {
+        state.q3_1Done = true;
+        safePlay(document.getElementById("sfxCorrect"));
+        showFeedback("fbQ3_1", true, `Correct! ${fbText}`);
+        checkRoom3Completion();
+      } else {
+        safePlay(document.getElementById("sfxIncorrect"));
+        showFeedback("fbQ3_1", false, `Not quite (-10 life points). ${fbText}`);
+        deductLife(10);
+      }
+    });
+
+    // Question 3.2 Handler
+    document.getElementById("submitQ3_2").addEventListener("click", () => {
+      const raw = document.getElementById("q3_2_input").value.trim().toLowerCase();
+      if (!raw) {
+        showFeedback("fbQ3_2", false, "Please enter a value before checking.");
+        return;
+      }
+
+      const ok = raw === "48" || raw === "48 hours";
+      const fbText =
+        "Because tadalafil has a significantly longer elimination half-life (~17.5 hours) than sildenafil (~4 hours), ACC/AHA guidelines require a minimum washout period of at least 48 hours after the last dose of tadalafil before administering nitrates under close medical supervision.";
+
+      if (ok) {
+        state.q3_2Done = true;
+        safePlay(document.getElementById("sfxCorrect"));
+        showFeedback("fbQ3_2", true, `Correct! ${fbText}`);
+        checkRoom3Completion();
+      } else {
+        safePlay(document.getElementById("sfxIncorrect"));
+        showFeedback("fbQ3_2", false, `Not quite (-10 life points). ${fbText}`);
+        deductLife(10);
+      }
+    });
+
+    // Hints
+    document.querySelectorAll("[data-hint]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const hintEl = document.getElementById(btn.getAttribute("data-hint"));
+        if (hintEl) hintEl.style.display = "block";
+      });
+    });
+
+    // Navigation buttons
+    document.getElementById("startBtn").addEventListener("click", () => showScreen("instructionsScreen"));
+    document.getElementById("continueToMapBtn").addEventListener("click", () => showScreen("mapScreen"));
+    document.getElementById("openRoom1Btn").addEventListener("click", () => showScreen("room1Screen"));
+    document.getElementById("openRoom2Btn").addEventListener("click", () => showScreen("room2Screen"));
+    document.getElementById("openRoom3Btn").addEventListener("click", () => {
+      if (state.room3Unlocked) showScreen("room3Screen");
+    });
+
+    document.querySelectorAll("[data-nav]").forEach((btn) => {
+      btn.addEventListener("click", () => showScreen(btn.getAttribute("data-nav")));
+    });
+
+    document.getElementById("audioToggleBtn").addEventListener("click", toggleAudio);
+
+    function resetGame() {
+      clearInterval(state.timerId);
+      const keepAudio = state.audioEnabled;
+      state = {
+        screen: "startScreen",
+        secondsLeft: INITIAL_SECONDS,
+        life: INITIAL_LIFE,
+        room1Done: false,
+        room2Done: false,
+        room3Unlocked: false,
+        room3Done: false,
+        q1_1Done: false,
+        q1_2Done: false,
+        q2_1Done: false,
+        q2_2Done: false,
+        q3_1Done: false,
+        q3_2Done: false,
+        audioEnabled: keepAudio,
+        timerId: null,
+        ended: false
+      };
+
+      document.querySelectorAll('input[type="radio"], input[type="checkbox"]').forEach((i) => (i.checked = false));
+      document.querySelectorAll('input[type="text"]').forEach((i) => (i.value = ""));
+      document.querySelectorAll("select").forEach((s) => (s.selectedIndex = 0));
+      document.querySelectorAll(".feedback-box, .hint-box").forEach((b) => {
+        b.style.display = "";
+        b.className = b.classList.contains("hint-box") ? "hint-box" : "feedback-box";
+        if (b.classList.contains("feedback-box")) b.textContent = "";
+      });
+      document.getElementById("room1RewardBox").style.display = "none";
+      document.getElementById("room2RewardBox").style.display = "none";
+
+      updateHUD();
+      startTimer();
+      showScreen("startScreen");
+    }
+
+    function startTimer() {
+      clearInterval(state.timerId);
+      state.timerId = setInterval(() => {
+        if (state.ended) {
+          clearInterval(state.timerId);
+          return;
+        }
+        state.secondsLeft = Math.max(0, state.secondsLeft - 1);
+        updateHUD();
+        if (state.secondsLeft <= 0) {
+          triggerGameOver("The 20-minute countdown timer expired.");
+        }
+      }, 1000);
+    }
+
+    document.getElementById("hudRestartBtn").addEventListener("click", resetGame);
+    document.getElementById("completionRestartBtn").addEventListener("click", resetGame);
+    document.getElementById("gameOverRestartBtn").addEventListener("click", resetGame);
+
+    // Initialize
+    updateHUD();
+    updateMapAndReconstruction();
+    startTimer();
+  </script>
+</body>
+</html>
